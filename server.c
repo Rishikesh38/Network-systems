@@ -94,11 +94,6 @@ int str_finder(uint8_t* in, uint8_t* out)
             uint8_t header[SIZE_OF_HEADER];
             uint8_t data[SIZE_OF_PACKET];
             bool end_flag = false;
-            /*
-            * The line checks whether the file specified by `file_name` exists and is accessible. 
-            * If the file exists and is accessible, the corresponding code block is executed; 
-            * otherwise, it may execute alternative logic for handling the absence of the file.
-            */
             if(!access(file_name,F_OK))
             {
 
@@ -133,10 +128,7 @@ int str_finder(uint8_t* in, uint8_t* out)
 		{
             int index = 3;
 			strcpy(path,"www");
-            /* 
-            *  Iterate till the file name reaches end or empty or space or no more characters left
-            *  copy the file path after the www so that we can navigate to that certain file
-            */
+
 			while(*(in + get_cmd_len)!= SPACE_CHAR)
 			{
 				path[index++]= *(in + get_cmd_len++);
