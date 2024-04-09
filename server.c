@@ -23,6 +23,33 @@
 #define SIZE_OF_HEADER 320
 #define SIZE_OF_PACKET 32
 
+int buf_data;
+uint8_t error_404[]=
+"HTTP/1.1 404 Not Found\r\n"
+"Content-Type: text/html; charset = UTF-8\r\n\r\n"
+"<!DOCTYPE html>\r\n"
+"<body><center><h1>404 Not Found: The requested file can not be found in the document tree</h1><br>\r\n";
+uint8_t error_405[]=
+"HTTP/1.1 405 Method Not Allowed\r\n"
+"Content-Type: text/html; charset = UTF-8\r\n\r\n"
+"<!DOCTYPE html>\r\n"
+"<body><center><h1>405: A method other than GET was requested</h1><br>\r\n";
+uint8_t error_403[]=
+"HTTP/1.1 403 Forbidden\r\n"
+"Content-Type: text/html; charset = UTF-8\r\n\r\n"
+"<!DOCTYPE html>\r\n"
+"<body><center><h1>403: The requested file can not be accessed due to a file permission issue</h1><br>\r\n";
+uint8_t error_400[]=
+"HTTP/1.1 400 Bad Request\r\n"
+"Content-Type: text/html; charset = UTF-8\r\n\r\n"
+"<!DOCTYPE html>\r\n"
+"<body><center><h1>400: The request could not be parsed or is malformed</h1><br>\r\n";
+uint8_t error_505[]=
+"HTTP/1.1 505 HTTP Version Not Supported\r\n"
+"Content-Type: text/html; charset = UTF-8\r\n\r\n"
+"<!DOCTYPE html>\r\n"
+"<body><center><h1>505: An HTTP version other than 1.0 or 1.1 was requested</h1><br>\r\n";
+
 
 uint8_t get_command[] = "GET";
 uint8_t text_file[]="txt";
@@ -47,8 +74,17 @@ void exit_handler(int shutdown_fd)
     close(shutdown_fd);
 }
 
+uint8_t checkFileExtension(uint8_t* fileName, uint8_t* fileExtension)
+{
+    size_t fileNameLength = strlen(fileName);
+    size_t extensionLength = strlen(fileExtension);
+    return strncmp(fileName + fileNameLength - extensionLength, fileExtension, extensionLength);
+}
 
-
+/*
+* Reference/Credits : I found this method long back in one website which I dont remember,
+* This is what I had in my interview prep notes and I used the same here.
+*/
 bool brute_force_pattern(uint8_t* str,uint8_t* pat)
 {
     bool match = false;  
@@ -94,6 +130,11 @@ int str_finder(uint8_t* in, uint8_t* out)
             uint8_t header[SIZE_OF_HEADER];
             uint8_t data[SIZE_OF_PACKET];
             bool end_flag = false;
+            /*
+            * The line checks whether the file specified by `file_name` exists and is accessible. 
+            * If the file exists and is accessible, the corresponding code block is executed; 
+            * otherwise, it may execute alternative logic for handling the absence of the file.
+            */
             if(!access(file_name,F_OK))
             {
 
@@ -101,6 +142,13 @@ int str_finder(uint8_t* in, uint8_t* out)
 		        fseek(file_pointer,0,SEEK_END);
 		        size_of_file = ftell(file_pointer);
 		        fseek(file_pointer,0,SEEK_SET);
+                type_of_file = !checkFileExtension(file_name, text_file) ? text_file_name :
+                            !checkFileExtension(file_name, image_png) ? image_png_name :
+                            !checkFileExtension(file_name, css_file) ? css_file_name :
+                            !checkFileExtension(file_name, js_file) ? js_file_name :
+                            !checkFileExtension(file_name, image_jpg) ? image_jpg_name :
+                            !checkFileExtension(file_name, image_gif) ? image_gif_name :
+                            !checkFileExtension(file_name, html_file) ? html_file_name : NULL;
                 
                 if(type_of_file == NULL)
                 {
@@ -114,7 +162,8 @@ int str_finder(uint8_t* in, uint8_t* out)
                 while ((n = fread(data, 1, SIZE_OF_PACKET, file_pointer)) > 0) 
                 {
                     memcpy(out, data, n); // Copy only the bytes actually read
-                    out += n;             
+                    out += n;             // Move the buffer pointer forward by the number of bytes read
+                    buf_data += n;      // Update the total number of bytes filled into the buffer
                 }
                 end_flag = true;
                 fclose(file_pointer);
@@ -128,7 +177,10 @@ int str_finder(uint8_t* in, uint8_t* out)
 		{
             int index = 3;
 			strcpy(path,"www");
-
+            /* 
+            *  Iterate till the file name reaches end or empty or space or no more characters left
+            *  copy the file path after the www so that we can navigate to that certain file
+            */
 			while(*(in + get_cmd_len)!= SPACE_CHAR)
 			{
 				path[index++]= *(in + get_cmd_len++);
@@ -141,12 +193,24 @@ int str_finder(uint8_t* in, uint8_t* out)
             uint8_t header[SIZE_OF_HEADER];
             uint8_t data[SIZE_OF_PACKET];
             bool end_flag = 0;
+            /*
+            * The line checks whether the file specified by `file_name` exists and is accessible. 
+            * If the file exists and is accessible, the corresponding code block is executed; 
+            * otherwise, it may execute alternative logic for handling the absence of the file.
+            */
             if(!access(file_name,F_OK))
             {
                 file_pointer = fopen(file_name,"r");
 		        fseek(file_pointer,0,SEEK_END);
 		        size_of_file = ftell(file_pointer);
 		        fseek(file_pointer,0,SEEK_SET);
+                type_of_file = !checkFileExtension(file_name, text_file) ? text_file_name :
+                            !checkFileExtension(file_name, image_png) ? image_png_name :
+                            !checkFileExtension(file_name, css_file) ? css_file_name :
+                            !checkFileExtension(file_name, js_file) ? js_file_name :
+                            !checkFileExtension(file_name, image_jpg) ? image_jpg_name :
+                            !checkFileExtension(file_name, image_gif) ? image_gif_name :
+                            !checkFileExtension(file_name, html_file) ? html_file_name : NULL;
                 
                 if(type_of_file == NULL)
                 {
@@ -159,7 +223,9 @@ int str_finder(uint8_t* in, uint8_t* out)
                 int n;
                 while ((n = fread(data, 1, SIZE_OF_PACKET, file_pointer)) > 0) 
                 {
-                    /* copy data here */
+                    memcpy(out, data, n); // Copy only the bytes actually read
+                    out += n;             // Move the buffer pointer forward by the number of bytes read
+                    buf_data += n;      // Update the total number of bytes filled into the buffer
                 }
                 end_flag = 1;
                 fclose(file_pointer);
@@ -169,6 +235,13 @@ int str_finder(uint8_t* in, uint8_t* out)
             }
             return end_flag;
 		}
+    }
+    else if(in == NULL)
+    {
+        return 400;
+    }
+    else{
+        return 404;
     }
 }
 
@@ -195,6 +268,24 @@ void thread_routine(void *arg)
             exit_handler(sock_fd);
 			break;
         } 
+        else if(ret_str_finder == 403)
+        {
+            ret_send = send(sock_fd,error_403,strlen(error_403),0);
+            exit_handler(sock_fd);
+			break;            
+        }
+        else if(ret_str_finder == 400)
+        {
+            ret_send = send(sock_fd,error_400,strlen(error_400),0);
+            exit_handler(sock_fd);
+			break;            
+        }
+        else
+        {
+            ret_send = send(sock_fd,error_405,strlen(error_405),0);
+            exit_handler(sock_fd);
+			break;
+        }
         bzero(msg,MSG_SIZE);
     }
     fflush(stdout);
@@ -250,6 +341,11 @@ int main(int argc , char *argv[])
     {
         printf("accept ran\n");
 
+        /* 
+         * parent is != 0 and child is == 0
+         * first check the process is parent. If yes then create a child
+         * next check if the child process is created. If no then try again
+        */
         verify_parent_or_child = (verify_parent_or_child != 0)?fork():0;
         if(!(verify_parent_or_child == 0))
         {
@@ -265,7 +361,12 @@ int main(int argc , char *argv[])
         *client_sock = client_connection_fd;
         timer.tv_sec = TIMEOUT_PERIOD;
 
-
+        /*
+        * Reference : https://stackoverflow.com/questions/4181784/how-to-set-socket-timeout-in-c-when-making-multiple-connections
+        * The SO_RCVTIMEO will pick the timer and it will wait untill the client sends data till 10secs.
+        * If the client doesn't send data within 10secs then the client connection is terminated. 
+        * If the client sends data within 10secs it will  reset the timer and will start counting till 10 from 0.
+        */
         int ret_val = setsockopt(*client_sock,SOL_SOCKET,SO_RCVTIMEO, (const char*)&timer,sizeof(timer));
         if(-1 == ret_val)
         {
